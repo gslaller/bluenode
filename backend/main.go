@@ -7,8 +7,14 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
-func main() {
+func init() {
 	fmt.Println(gin.Version)
 	fmt.Println(webrtc.MimeTypeOpus)
 	fmt.Println("Hello World!, from the container build")
+}
+
+func main() {
+	router := gin.New()
+	Controller(router)
+	router.Run(":8080")
 }
