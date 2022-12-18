@@ -16,9 +16,10 @@ func Controller(router *gin.Engine) {
 	router.Use(CorsMiddleware())
 
 	router.GET("/join/:id", func(c *gin.Context) {
+
 		id := c.Param("id")
 		c.JSON(200, gin.H{
-			"message": "pong",
+			"message": "message from gurpreet",
 			"id":      id,
 		})
 	})

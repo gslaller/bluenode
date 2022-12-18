@@ -7,6 +7,9 @@
     let connection = await NewWebConnection({});
     let localDesc = JSON.stringify(connection.localDescription);
     text = localDesc;
+    let ans = await fetch("http://localhost:8080/join/fancyPants");
+    let json = await ans.json();
+    text = JSON.stringify(json);
   }
 </script>
 
