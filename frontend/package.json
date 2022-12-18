@@ -19,6 +19,7 @@
     "vite": "^4.0.0"
   },
   "dependencies": {
-    "svelte-navigator": "^3.2.2"
+    "svelte-navigator": "^3.2.2",
+    "uuid": "^9.0.0"
   }
 }

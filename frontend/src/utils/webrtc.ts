@@ -3,7 +3,7 @@
 interface WebConnectionProps {
     video?: boolean;
     audio?: boolean;
-    data?: boolean;
+    data: boolean;
 }
 
 export async function NewWebConnection({ }: WebConnectionProps): Promise<RTCPeerConnection> {
