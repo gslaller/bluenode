@@ -105,7 +105,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 		}()
 
 		// Create a local track, all our SFU clients will be fed via this track
-		localTrack, newTrackErr := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, "video", "pion")
+		localTrack, newTrackErr := webrtc.NewTrackLocalStaticRTP(remoteTrack.Codec().RTPCodecCapability, "video", sdp.UserId)
 		if newTrackErr != nil {
 			panic(newTrackErr)
 		}

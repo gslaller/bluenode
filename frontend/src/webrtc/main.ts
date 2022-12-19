@@ -1,4 +1,5 @@
 import { JoinRoom, JoinRecieveRoom } from "../rest/room";
+import { getUserMedia } from "../utils/userMedia";
 
 interface WebConnectionProps {
     roomId: string;
@@ -18,9 +19,10 @@ export class WebConnection {
         this.props = props;
     }
 
-    async handleOutboundInit(stream: MediaStream): Promise<void> {
-        return new Promise((resolve, reject) => {
+    async handleOutboundInit(constraints: MediaStreamConstraints): Promise<MediaStream> {
+        return new Promise(async (resolve, reject) => {
 
+            let stream = await getUserMedia(constraints)
             this.outboundStream = stream;
 
             this.outbound = new RTCPeerConnection({
@@ -42,8 +44,7 @@ export class WebConnection {
 
             this.outbound.onicecandidate = (e) => {
                 if (e.candidate === null) {
-                    resolve();
-
+                    resolve(stream);
                 }
             }
 

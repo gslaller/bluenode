@@ -1,9 +1,6 @@
 
-export async function getUserMedia(): Promise<MediaStream> {
-    return navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: true
-    });
+export async function getUserMedia(obj: MediaStreamConstraints): Promise<MediaStream> {
+    return navigator.mediaDevices.getUserMedia(obj);
 }
 
 export async function StopStream(stream: MediaStream) {

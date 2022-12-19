@@ -15,9 +15,9 @@
   });
 
   let selfStream: MediaStream;
-  let { name, uuid } = get(user);
   let inboundStream: MediaStream;
 
+  let { name, uuid } = get(user);
   let params = useParams();
   let roomId = $params.roomId;
 
@@ -27,13 +27,13 @@
     roomId: roomId,
   });
 
-  onMount(async () => {
-    selfStream = await getUserMedia();
-    return () => StopStream(selfStream);
-  });
-
   async function handleJoin() {
-    await blueNode.handleOutboundInit(selfStream);
+    // where should the stream be created?
+    // i.e. should the webrtc give me a stream back or should the component do it?
+    selfStream = await blueNode.handleOutboundInit({
+      audio: false,
+      video: true,
+    });
     blueNode.sendJoinRequest();
   }
 
@@ -46,7 +46,10 @@
 <div class="video-grid">
   <button on:click={handleJoin}>Send Join</button>
   <button on:click={handleReceive}>Receive Join</button>
-  <Video stream={selfStream} />
+
+  {#if selfStream}
+    <Video stream={selfStream} />
+  {/if}
 
   {#if inboundStream}
     <Video stream={inboundStream} />
