@@ -22,6 +22,7 @@ func CorsMiddleware() gin.HandlerFunc {
 
 func Controller(router *gin.Engine) {
 	router.Use(CorsMiddleware())
+
 	router.POST("/join", controller.HandleJoin)
 	router.GET("/ping", controller.Ping)
 }

@@ -1,7 +1,7 @@
 
 export async function getUserMedia(): Promise<MediaStream> {
     return navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: false,
         video: true
     });
 }

@@ -1,3 +1,5 @@
+import { JoinRoom } from "../rest/room";
+
 interface WebConnectionProps {
     stream: MediaStream;
     roomId: string;
@@ -5,26 +7,22 @@ interface WebConnectionProps {
     userName: string;
 }
 
-
 export class WebConnection {
+
     props: WebConnectionProps;
+    type: string;
+    sdp: string;
     outbound: RTCPeerConnection;
     inbound: Array<RTCPeerConnection>;
+
     constructor(props: WebConnectionProps) {
         if (!props.stream) return;
-        let { stream } = props;
         this.props = props;
-        this.outbound = this.newRTCConnection();
-        stream.getTracks().forEach(track => {
-            this.outbound.addTrack(track, stream);
-        });
-        this.outbound.createOffer().then(offer => {
-            this.outbound.setLocalDescription(offer);
-
-        })
+        this.type = "";
+        this.sdp = "";
 
         this.handleOutboundInit();
-        console.log("outbound", this.outbound)
+
         this.inbound = [];
 
     }
@@ -40,16 +38,49 @@ export class WebConnection {
     }
 
     handleOutboundInit() {
+
+        let { stream } = this.props;
+
+        this.outbound = this.newRTCConnection();
+
+        stream.getTracks().forEach(track => {
+            this.outbound.addTrack(track, stream);
+        });
+
+        this.outbound.createOffer().then(offer => {
+            this.outbound.setLocalDescription(offer);
+
+        });
+
         this.outbound.onconnectionstatechange = (e) => {
             console.log("pc.onconnectionstatechange", e);
-        }
+        };
+
+
         this.outbound.onicecandidate = (e) => {
             if (e.candidate === null) {
-                let { roomId, userId, userName } = this.props;
-                let { sdp, type } = this.outbound.localDescription;
 
-                console.log("We have a SDP: ", this.outbound.localDescription);
+                this.sdp = this.outbound.localDescription.sdp;
+                this.type = this.outbound.localDescription.type;
+
             }
+        }
+
+    }
+
+    async sendJoinRequest() {
+
+        if (this.sdp === "" || this.type === "") return;
+
+        let { roomId, userId, userName } = this.props;
+        let { sdp, type } = this.outbound.localDescription;
+        let answer = await JoinRoom({ roomId, userId, userName, type, sdp });
+        try {
+            // @ts-ignore
+            await this.outbound.setRemoteDescription(answer);
+            console.log("answer", answer);
+        } catch (e) {
+            console.log("error", e);
         }
 
     }

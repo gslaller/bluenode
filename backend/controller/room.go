@@ -1,48 +1,33 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gslaller/bluenode/backend/service"
 )
-
-type ExtendedSessionDescription struct {
-	Type string `json:"type"`
-	SDP  string `json:"sdp"`
-
-	UserId   string `json:"userId"`
-	UserName string `json:"userName"`
-	RoomId   string `json:"roomId"`
-}
 
 func HandleJoin(c *gin.Context) {
 
-	var sessionDescription ExtendedSessionDescription
+	var sessionDescription service.ExtendedSessionDescription
 
 	if err := c.BindJSON(&sessionDescription); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if sessionDescription.Type == "offer" {
-		// sdp := webrtc.SessionDescription{
-		// 	Type: webrtc.SDPTypeOffer,
-		// 	SDP:  sessionDescription.SDP,
-		// }
-
-		// create a new peer connection
-		// create a new data channel
-		// set the remote description
-		// create an answer
-		// set the local description
-		// send the answer back to the client
-	} else if sessionDescription.Type == "answer" {
-		// set the remote description
-	} else if sessionDescription.Type == "candidate" {
-		// add ice candidate
+	ans, err := service.Connection.HandleInboundRequest(&sessionDescription)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "message from gurpreet",
-	})
+	if jsonParsed, err := json.Marshal(ans); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	} else {
+		c.String(http.StatusOK, string(jsonParsed))
+	}
+
 }

@@ -22,7 +22,17 @@ async function JoinRoom(obj: {
     sdp: string,
 }) {
 
-}
+    let ans = await fetch(`${URL}/join`, {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(obj)
+    })
+
+    let data = await ans.json() as { type: string, sdp: string };
+    return data;
+};
 
 async function DeleteRoom() {
 

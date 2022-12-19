@@ -16,15 +16,15 @@
 
   let selfStream: MediaStream;
   let { name, uuid } = get(user);
+
   let params = useParams();
   let roomId = $params.roomId;
-  console.log("params", roomId);
 
   $: blueNode = new WebConnection({
     stream: selfStream,
     userName: name,
     userId: uuid,
-    roomId: "one",
+    roomId: roomId,
   });
 
   onMount(async () => {
@@ -32,11 +32,16 @@
 
     return () => StopStream(selfStream);
   });
+
+  function handleJoin() {
+    blueNode.sendJoinRequest();
+  }
 </script>
 
 <div>The Room</div>
 <div class="video-grid">
-  <!-- <Video stream={selfStream} /> -->
+  <button on:click={handleJoin}>Send Joing</button>
+  <Video stream={selfStream} />
   <!-- <Video stream={selfStream} /> -->
   <!-- <Video stream={selfStream} /> -->
   <!-- <Video stream={selfStream} /> -->
