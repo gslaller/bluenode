@@ -78,6 +78,7 @@ export class WebConnection {
             // Add the video transceiver
 
             inbound.addTransceiver('video', { direction: 'recvonly' });
+            inbound.addTransceiver('audio', { direction: 'recvonly' });
 
             inbound.createOffer().then(offer => {
                 inbound.setLocalDescription(offer);
@@ -106,6 +107,7 @@ export class WebConnection {
             }, 3000);
 
             inbound.ontrack = (event) => {
+                console.log("There is a track")
                 let stream = event.streams[0]
                 resolve(stream)
             }

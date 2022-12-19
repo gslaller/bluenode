@@ -26,6 +26,7 @@ const (
 type connection struct {
 	peerConnection []*webrtc.PeerConnection
 	localTrack     *webrtc.TrackLocalStaticRTP
+	audioTrack     *webrtc.TrackLocalStaticRTP
 }
 
 var Connection connection
@@ -34,6 +35,7 @@ func init() {
 	Connection = connection{
 		peerConnection: make([]*webrtc.PeerConnection, 0, 10),
 		localTrack:     nil,
+		audioTrack:     nil,
 	}
 }
 
@@ -87,7 +89,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	// to connected peers
 	peerConnection.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 
-		fmt.Println("There is a inbound track")
+		fmt.Println("There is a inbound track of kind:", remoteTrack.Kind())
 
 		// fmt.Printf("RemoteTrack has started, +%#v", remoteTrack)
 		// fmt.Printf("Receiver has started, +%#v", receiver)
@@ -110,7 +112,11 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 			panic(newTrackErr)
 		}
 
-		c.localTrack = localTrack
+		if remoteTrack.Kind() == webrtc.RTPCodecTypeAudio {
+			c.audioTrack = localTrack
+		} else if remoteTrack.Kind() == webrtc.RTPCodecTypeVideo {
+			c.localTrack = localTrack
+		}
 		// localTrackChan <- localTrack
 
 		rtpBuf := make([]byte, 1400)
@@ -158,10 +164,22 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 
 }
 
+func ReadRTCPForNACK(rtpSender *webrtc.RTPSender) {
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+}
+
 func (c *connection) HandleOutboundRequest(sdp *ExtendedSessionDescription) (*webrtc.SessionDescription, error) {
 
-	fmt.Println("HandleOutboundRequest")
-	fmt.Println("HandleOutboundRequest")
+	if c.localTrack == nil && c.audioTrack == nil {
+		return nil, errors.New("there must at least one track available")
+	}
 
 	offer := webrtc.SessionDescription{}
 	offer.SDP = sdp.SDP
@@ -180,25 +198,26 @@ func (c *connection) HandleOutboundRequest(sdp *ExtendedSessionDescription) (*we
 	if err != nil {
 		panic(err)
 	}
-
 	c.peerConnection = append(c.peerConnection, peerConnection)
+	fmt.Println("peerConnectionLength: ", len(c.peerConnection))
 
-	rtpSender, err := peerConnection.AddTrack(c.localTrack)
-	if err != nil {
-		panic(err)
+	if c.localTrack != nil {
+		rtpSender, err := peerConnection.AddTrack(c.localTrack)
+		if err != nil {
+			panic(err)
+		}
+
+		ReadRTCPForNACK(rtpSender)
 	}
 
-	// Read incoming RTCP packets
-	// Before these packets are returned they are processed by interceptors. For things
-	// like NACK this needs to be called.
-	go func() {
-		rtcpBuf := make([]byte, 1500)
-		for {
-			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
-				return
-			}
+	if c.audioTrack != nil {
+		rtpSender, err := peerConnection.AddTrack(c.audioTrack)
+		if err != nil {
+			panic(err)
 		}
-	}()
+
+		ReadRTCPForNACK(rtpSender)
+	}
 
 	// Set the remote SessionDescription
 	err = peerConnection.SetRemoteDescription(offer)

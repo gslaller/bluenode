@@ -7,6 +7,7 @@
   import { getUserMedia, StopStream } from "../utils/userMedia";
   import { WebConnection } from "../webrtc/main";
   import { useParams } from "svelte-navigator";
+  import AudioVisualizer from "../components/AudioVisualizer.svelte";
 
   // navigateToSettings();
 
@@ -31,7 +32,7 @@
     // where should the stream be created?
     // i.e. should the webrtc give me a stream back or should the component do it?
     selfStream = await blueNode.handleOutboundInit({
-      audio: false,
+      audio: true,
       video: true,
     });
     blueNode.sendJoinRequest();
