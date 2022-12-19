@@ -1,7 +1,6 @@
-import { JoinRoom } from "../rest/room";
+import { JoinRoom, JoinRecieveRoom } from "../rest/room";
 
 interface WebConnectionProps {
-    stream: MediaStream;
     roomId: string;
     userId: string;
     userName: string;
@@ -9,68 +8,49 @@ interface WebConnectionProps {
 
 export class WebConnection {
 
+    outboundStream: MediaStream;
+
     props: WebConnectionProps;
-    type: string;
-    sdp: string;
     outbound: RTCPeerConnection;
-    inbound: Array<RTCPeerConnection>;
+    inbound: RTCPeerConnection;
 
     constructor(props: WebConnectionProps) {
-        if (!props.stream) return;
         this.props = props;
-        this.type = "";
-        this.sdp = "";
-
-        this.handleOutboundInit();
-
-        this.inbound = [];
-
     }
 
-    newRTCConnection(): RTCPeerConnection {
-        return new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: 'stun:stun.l.google.com:19302'
+    async handleOutboundInit(stream: MediaStream): Promise<void> {
+        return new Promise((resolve, reject) => {
+
+            this.outboundStream = stream;
+
+            this.outbound = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' },],
+            });
+
+            // tracks are addeded
+            stream.getTracks().forEach(track => {
+                this.outbound.addTrack(track, stream);
+            });
+
+            this.outbound.createOffer().then(offer => {
+                this.outbound.setLocalDescription(offer);
+            });
+
+            this.outbound.onconnectionstatechange = (e) => {
+                console.log("pc.onconnectionstatechange", e);
+            };
+
+            this.outbound.onicecandidate = (e) => {
+                if (e.candidate === null) {
+                    resolve();
+
                 }
-            ]
-        })
-    }
-
-    handleOutboundInit() {
-
-        let { stream } = this.props;
-
-        this.outbound = this.newRTCConnection();
-
-        stream.getTracks().forEach(track => {
-            this.outbound.addTrack(track, stream);
-        });
-
-        this.outbound.createOffer().then(offer => {
-            this.outbound.setLocalDescription(offer);
-
-        });
-
-        this.outbound.onconnectionstatechange = (e) => {
-            console.log("pc.onconnectionstatechange", e);
-        };
-
-
-        this.outbound.onicecandidate = (e) => {
-            if (e.candidate === null) {
-
-                this.sdp = this.outbound.localDescription.sdp;
-                this.type = this.outbound.localDescription.type;
-
             }
-        }
 
+        });
     }
 
     async sendJoinRequest() {
-
-        if (this.sdp === "" || this.type === "") return;
 
         let { roomId, userId, userName } = this.props;
         let { sdp, type } = this.outbound.localDescription;
@@ -84,33 +64,54 @@ export class WebConnection {
         }
 
     }
-}
 
-export async function NewWebConnection({ }: WebConnectionProps): Promise<RTCPeerConnection> {
-    return new Promise(async (resolve, reject) => {
-        const pc = new RTCPeerConnection({
-            iceServers: [
-                {
-                    urls: 'stun:stun.l.google.com:19302'
+    // For the time being there is only a single inbound peer connection possible
+    async handleInboundInit(): Promise<MediaStream | null> {
+        return new Promise((resolve, reject) => {
+
+            let inbound = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' },],
+            });
+
+            this.inbound = inbound;
+            // Add the video transceiver
+
+            inbound.addTransceiver('video', { direction: 'recvonly' });
+
+            inbound.createOffer().then(offer => {
+                inbound.setLocalDescription(offer);
+            });
+
+            inbound.onconnectionstatechange = (e) => {
+                console.log("pc.onconnectionstatechange", e);
+            };
+
+            inbound.onicecandidate = async (e) => {
+                if (e.candidate === null) {
+                    // Proceed with the fetch request
+                    let { roomId, userId, userName } = this.props;
+                    let { sdp, type } = inbound.localDescription;
+
+
+                    let answer = await JoinRecieveRoom({ roomId, userId, userName, type, sdp });
+                    // @ts-ignore
+                    await inbound.setRemoteDescription(answer);
+                    console.log("handleInboundInit the fetch request has been made with: ", answer);
                 }
-            ]
-        })
-
-        pc.onconnectionstatechange = (e) => {
-            console.log("pc.onconnectionstatechange", e);
-        }
-
-        pc.onicecandidate = (e) => {
-            if (e.candidate === null) {
-                resolve(pc)
             }
-            // resolve(pc);
-        }
-        pc.addTransceiver('video', { streams: [], direction: 'sendonly' })
-        pc.addTransceiver('audio', { streams: [], direction: 'sendonly' })
-        let offer = await pc.createOffer();
-        pc.setLocalDescription(offer);
 
-    });
+            setTimeout(() => {
+                reject("timeout")
+            }, 3000);
+
+            inbound.ontrack = (event) => {
+                let stream = event.streams[0]
+                resolve(stream)
+            }
+
+        });
+    }
+
+
 }
 

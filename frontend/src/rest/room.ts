@@ -14,15 +14,32 @@ async function CreateRoom() {
 
 }
 
-async function JoinRoom(obj: {
+type JoinRoomType = {
     roomId: string,
     userId: string,
     userName: string,
     type: string,
     sdp: string,
-}) {
+}
 
-    let ans = await fetch(`${URL}/join`, {
+
+async function JoinRoom(obj: JoinRoomType) {
+
+    let ans = await fetch(`${URL}/sendjoin`, {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(obj)
+    })
+
+    let data = await ans.json() as { type: string, sdp: string };
+    return data;
+};
+
+async function JoinRecieveRoom(obj: JoinRoomType) {
+
+    let ans = await fetch(`${URL}/recievejoin`, {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
@@ -46,6 +63,7 @@ export {
     CreateRoom,
     JoinRoom,
     DeleteRoom,
-    ListRooms
+    ListRooms,
+    JoinRecieveRoom
 
 }

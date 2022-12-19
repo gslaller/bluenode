@@ -25,6 +25,7 @@ const (
 
 type connection struct {
 	peerConnection []*webrtc.PeerConnection
+	localTrack     *webrtc.TrackLocalStaticRTP
 }
 
 var Connection connection
@@ -32,10 +33,15 @@ var Connection connection
 func init() {
 	Connection = connection{
 		peerConnection: make([]*webrtc.PeerConnection, 0, 10),
+		localTrack:     nil,
 	}
 }
 
 func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*webrtc.SessionDescription, error) {
+	if c.localTrack != nil {
+		return nil, errors.New("localTrack already exists")
+	}
+	fmt.Println("HandleInboundRequest")
 
 	offer := webrtc.SessionDescription{}
 	offer.SDP = sdp.SDP
@@ -58,6 +64,8 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 		panic(err)
 	}
 
+	// The closer function has to be handled
+
 	// defer func() {
 	// 	if cErr := peerConnection.Close(); cErr != nil {
 	// 		fmt.Printf("cannot close peerConnection: %v\n", cErr)
@@ -79,7 +87,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	// to connected peers
 	peerConnection.OnTrack(func(remoteTrack *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 
-		fmt.Println("OnTrack")
+		fmt.Println("There is a inbound track")
 
 		// fmt.Printf("RemoteTrack has started, +%#v", remoteTrack)
 		// fmt.Printf("Receiver has started, +%#v", receiver)
@@ -102,18 +110,16 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 			panic(newTrackErr)
 		}
 
+		c.localTrack = localTrack
 		// localTrackChan <- localTrack
 
 		rtpBuf := make([]byte, 1400)
 		for {
-			fmt.Println("read from remoteTrack first pass")
 			i, _, readErr := remoteTrack.Read(rtpBuf)
 
 			if readErr != nil {
 				panic(readErr)
 			}
-
-			fmt.Println("write to localTrack")
 
 			// ErrClosedPipe means we don't have any subscribers, this is ok if no peers have connected yet
 			if _, err = localTrack.Write(rtpBuf[:i]); err != nil && !errors.Is(err, io.ErrClosedPipe) {
@@ -149,5 +155,78 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	<-gatherComplete
 
 	return peerConnection.LocalDescription(), nil
+
+}
+
+func (c *connection) HandleOutboundRequest(sdp *ExtendedSessionDescription) (*webrtc.SessionDescription, error) {
+
+	fmt.Println("HandleOutboundRequest")
+	fmt.Println("HandleOutboundRequest")
+
+	offer := webrtc.SessionDescription{}
+	offer.SDP = sdp.SDP
+	offer.Type = webrtc.SDPTypeOffer
+	offer.Unmarshal()
+
+	peerConnectionConfig := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+
+	peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	c.peerConnection = append(c.peerConnection, peerConnection)
+
+	rtpSender, err := peerConnection.AddTrack(c.localTrack)
+	if err != nil {
+		panic(err)
+	}
+
+	// Read incoming RTCP packets
+	// Before these packets are returned they are processed by interceptors. For things
+	// like NACK this needs to be called.
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+
+	// Set the remote SessionDescription
+	err = peerConnection.SetRemoteDescription(offer)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create answer
+	answer, err := peerConnection.CreateAnswer(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create channel that is blocked until ICE Gathering is complete
+	gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+	// Sets the LocalDescription, and starts our UDP listeners
+	err = peerConnection.SetLocalDescription(answer)
+	if err != nil {
+		panic(err)
+	}
+
+	// Block until ICE Gathering is complete, disabling trickle ICE
+	// we do this because we only can exchange one signaling message
+	// in a production application you should exchange ICE Candidates via OnICECandidate
+	<-gatherComplete
+	return peerConnection.LocalDescription(), nil
+
+	// Get the LocalDescription and take it to base64 so we can paste in browser
 
 }

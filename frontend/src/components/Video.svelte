@@ -14,7 +14,7 @@
         }
       },
       destroy() {
-        alert("destroy");
+        console.log("video element is destroyed");
         /* stream revoking logic here */
       },
     };
