@@ -9,15 +9,21 @@ interface WebConnectionProps {
 
 export class WebConnection {
 
-    outboundStream: MediaStream;
+    outboundStream: MediaStream = new MediaStream();
     datachannel: RTCDataChannel;
     props: WebConnectionProps;
+
     outbound: RTCPeerConnection;
+    audioTransceiver: RTCRtpTransceiver;
+    videoTransceiver: RTCRtpTransceiver;
+
     inbound: RTCPeerConnection;
     channelName = "text";
     sendMessageQueue: Array<(data: string) => void> = [];
     constraints: MediaStreamConstraints = {};
     // messages = new Array<string>();
+
+    newTrackCallback: () => void;
 
 
     constructor(props: WebConnectionProps) {
@@ -53,34 +59,34 @@ export class WebConnection {
         this.constraints = constraints;
         return new Promise(async (resolve, reject) => {
 
-            let stream = await getUserMedia(constraints)
-            this.outboundStream = stream;
 
-            this.outbound = new RTCPeerConnection({
+            let outbound = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' },],
             });
 
-            this.datachannel = this.outbound.createDataChannel(this.channelName);
+            this.datachannel = outbound.createDataChannel(this.channelName);
             this.createOutboundChannel();
 
+            this.audioTransceiver = outbound.addTransceiver('audio', { direction: 'sendonly' });
+            this.videoTransceiver = outbound.addTransceiver('video', { direction: 'sendonly' });
+
             // tracks are addeded
-            stream.getTracks().forEach(track => {
-                this.outbound.addTrack(track, stream);
+
+            outbound.createOffer().then(offer => {
+                outbound.setLocalDescription(offer);
             });
 
-            this.outbound.createOffer().then(offer => {
-                this.outbound.setLocalDescription(offer);
-            });
-
-            this.outbound.onconnectionstatechange = (e) => {
+            outbound.onconnectionstatechange = (e) => {
                 console.log("pc.onconnectionstatechange", e);
             };
 
-            this.outbound.onicecandidate = (e) => {
+            outbound.onicecandidate = (e) => {
                 if (e.candidate === null) {
-                    resolve(stream);
+                    resolve(this.outboundStream);
                 }
             }
+
+            this.outbound = outbound;
 
         });
     }
@@ -97,8 +103,29 @@ export class WebConnection {
         } catch (e) {
             console.log("error", e);
         }
+    }
+
+    async addMedia() {
+        let stream = await getUserMedia(this.constraints);
+
+        for (let track of stream.getTracks()) {
+            this.outboundStream.addTrack(track);
+        }
+
+        let videoTrack = stream.getVideoTracks()[0];
+        let audioTrack = stream.getAudioTracks()[0];
+
+        this.audioTransceiver.sender.replaceTrack(audioTrack);
+        this.videoTransceiver.sender.replaceTrack(videoTrack);
+
+        this.newTrackCallback();
 
     }
+
+    registerNewTrackCallback(callback: () => void) {
+        this.newTrackCallback = callback;
+    }
+
 
     // For the time being there is only a single inbound peer connection possible
     async handleInboundInit(): Promise<MediaStream | null> {

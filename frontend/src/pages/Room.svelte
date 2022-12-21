@@ -31,6 +31,13 @@
     roomId: roomId,
   });
 
+  let newTrack = 0;
+
+  $: blueNode.registerNewTrackCallback(() => {
+    newTrack += 1;
+    console.log("new track");
+  });
+
   async function handleJoin() {
     // where should the stream be created?
     // i.e. should the webrtc give me a stream back or should the component do it?
@@ -38,7 +45,8 @@
       audio: true,
       video: true,
     });
-    blueNode.sendJoinRequest();
+    await blueNode.sendJoinRequest();
+    blueNode.addMedia();
   }
 
   async function handleReceive() {
@@ -95,7 +103,7 @@
   <button on:click={handleJoin}>Send Join</button>
   <button on:click={handleReceive}>Receive Join</button>
 
-  {#if selfStream}
+  {#if selfStream && newTrack}
     <Video stream={selfStream} />
   {/if}
 

@@ -62,6 +62,7 @@ func (c *connection) handleDatachannel(d *webrtc.DataChannel) {
 				if sendErr != nil {
 					panic(sendErr)
 				}
+
 			}
 		}
 	})
