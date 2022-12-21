@@ -1,13 +1,14 @@
 <script lang="ts">
   import { get } from "svelte/store";
   import { RandomName, user } from "../store/user";
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import navigateToSettings from "../utils/navigateToSettings";
   import Video from "../components/Video.svelte";
   import { getUserMedia, StopStream } from "../utils/userMedia";
   import { WebConnection } from "../webrtc/main";
   import { useParams } from "svelte-navigator";
   import AudioVisualizer from "../components/AudioVisualizer.svelte";
+  import MessageComp from "../components/MessageComp.svelte";
 
   // navigateToSettings();
 
@@ -41,9 +42,27 @@
   async function handleReceive() {
     inboundStream = await blueNode.handleInboundInit();
   }
+
+  onDestroy(() => {
+    blueNode.CleanUp();
+    blueNode = null;
+  });
+
+  function sendMessage(message: string) {
+    blueNode.sendMessage(message);
+  }
+
+  function recieveMessage(f: (data: string) => void) {
+    blueNode.recieveMessage(f);
+  }
 </script>
 
 <div>The Room</div>
+
+{#if blueNode}
+  <MessageComp {sendMessage} {recieveMessage} />
+{/if}
+
 <div class="video-grid">
   <button on:click={handleJoin}>Send Join</button>
   <button on:click={handleReceive}>Receive Join</button>

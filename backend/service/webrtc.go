@@ -27,6 +27,7 @@ type connection struct {
 	peerConnection []*webrtc.PeerConnection
 	localTrack     *webrtc.TrackLocalStaticRTP
 	audioTrack     *webrtc.TrackLocalStaticRTP
+	datachannels   []*webrtc.DataChannel
 }
 
 var Connection connection
@@ -37,6 +38,43 @@ func init() {
 		localTrack:     nil,
 		audioTrack:     nil,
 	}
+}
+
+func (c *connection) handleDatachannel(d *webrtc.DataChannel) {
+
+	// add the datachannel to the list of datachannels
+
+	c.datachannels = append(c.datachannels, d)
+
+	fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
+
+	d.OnOpen(func() {
+		fmt.Printf("datachannel opened '%s' '%d'\n", d.Label(), d.ID())
+	})
+
+	// Register text message handling
+	d.OnMessage(func(msg webrtc.DataChannelMessage) {
+		// fmt.Printf("Message from DataChannel '%s': '%s'\n", d.Label(), string(msg.Data))
+
+		for _, datachannel := range c.datachannels {
+			if datachannel.ID() != d.ID() {
+
+				sendErr := datachannel.SendText(string(msg.Data))
+				if sendErr != nil {
+					panic(sendErr)
+				}
+			}
+		}
+	})
+
+	d.OnClose(func() {
+		fmt.Printf("datachannel closed '%s' '%d'\n", d.Label(), d.ID())
+	})
+
+	d.OnError(func(err error) {
+		fmt.Printf("Error %s\n", err.Error())
+	})
+
 }
 
 func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*webrtc.SessionDescription, error) {
@@ -59,12 +97,26 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	}
 
 	peerConnection, err := webrtc.NewPeerConnection(peerConnectionConfig)
-	c.peerConnection = append(c.peerConnection, peerConnection)
-	fmt.Println("peerConnectionLength: ", len(c.peerConnection))
-
 	if err != nil {
 		panic(err)
 	}
+
+	c.peerConnection = append(c.peerConnection, peerConnection)
+	fmt.Println("peerConnectionLength: ", len(c.peerConnection))
+
+	// Register data channel creation handling
+
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		c.handleDatachannel(d)
+	})
+
+	peerConnection.OnConnectionStateChange(func(connectionState webrtc.PeerConnectionState) {
+		fmt.Println("Connection State has changed ", connectionState.String())
+		if connectionState == webrtc.PeerConnectionStateFailed || connectionState == webrtc.PeerConnectionStateClosed {
+			fmt.Printf("Connection State has changed %s\n", connectionState.String())
+			// peerConnection.Close()
+		}
+	})
 
 	// The closer function has to be handled
 
@@ -200,6 +252,10 @@ func (c *connection) HandleOutboundRequest(sdp *ExtendedSessionDescription) (*we
 	}
 	c.peerConnection = append(c.peerConnection, peerConnection)
 	fmt.Println("peerConnectionLength: ", len(c.peerConnection))
+
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		c.handleDatachannel(d)
+	})
 
 	if c.localTrack != nil {
 		rtpSender, err := peerConnection.AddTrack(c.localTrack)

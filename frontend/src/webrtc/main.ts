@@ -10,13 +10,33 @@ interface WebConnectionProps {
 export class WebConnection {
 
     outboundStream: MediaStream;
-
+    datachannel: RTCDataChannel;
     props: WebConnectionProps;
     outbound: RTCPeerConnection;
     inbound: RTCPeerConnection;
+    channelName = "text";
+    sendMessageQueue: Array<(data: string) => void> = [];
+
+    // messages = new Array<string>();
+
 
     constructor(props: WebConnectionProps) {
         this.props = props;
+    }
+
+    async CleanUp() {
+        console.log("CleanUp")
+        if (this.outboundStream) {
+            this.outboundStream.getTracks().forEach(track => track.stop());
+        }
+
+        if (this.outbound) {
+            this.outbound.close();
+        }
+
+        if (this.inbound) {
+            this.inbound.close();
+        }
     }
 
     async handleOutboundInit(constraints: MediaStreamConstraints): Promise<MediaStream> {
@@ -28,6 +48,9 @@ export class WebConnection {
             this.outbound = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' },],
             });
+
+            this.datachannel = this.outbound.createDataChannel(this.channelName);
+            this.createOutboundChannel();
 
             // tracks are addeded
             stream.getTracks().forEach(track => {
@@ -75,6 +98,9 @@ export class WebConnection {
             });
 
             this.inbound = inbound;
+            this.datachannel = this.inbound.createDataChannel(this.channelName);
+            this.createOutboundChannel();
+
             // Add the video transceiver
 
             inbound.addTransceiver('video', { direction: 'recvonly' });
@@ -115,6 +141,38 @@ export class WebConnection {
         });
     }
 
+    async createOutboundChannel() {
+        console.log("createOutboundChannel")
+        this.datachannel.onmessage = (e) => {
+            // this.messages.push(e.data);
+            this.emitSendMessage(e.data)
+        }
+
+        this.datachannel.onopen = (e) => {
+            console.log("datachannel.onopen", e);
+
+        }
+
+        this.datachannel.onerror = (e) => {
+            console.error("datachannel.onerror", e);
+        }
+    }
+
+    sendMessage(message: string) {
+        if (this.datachannel && this.datachannel.readyState === "open") {
+            this.datachannel.send(message);
+        }
+    }
+
+    emitSendMessage(message: string) {
+        this.sendMessageQueue.forEach((f) => {
+            f(message);
+        })
+    }
+
+    recieveMessage(send: (data: string) => void) {
+        this.sendMessageQueue.push(send);
+    }
 
 }
 
