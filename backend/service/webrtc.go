@@ -101,7 +101,6 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	fmt.Println("peerConnectionLength: ", len(c.peerConnection))
 
 	// Register data channel creation handling
-
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 		c.handleDatachannel(d)
 	})

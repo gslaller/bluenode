@@ -23,6 +23,8 @@
   let params = useParams();
   let roomId = $params.roomId;
 
+  let screenSharingOn = false;
+
   $: blueNode = new WebConnection({
     userName: name,
     userId: uuid,
@@ -63,6 +65,16 @@
   function toggleAudio() {
     blueNode.toggleAudio();
   }
+
+  function changeToScreenShare() {
+    screenSharingOn = true;
+    blueNode.chageToScreenShare();
+  }
+
+  function changeToCamera() {
+    screenSharingOn = false;
+    blueNode.changeToCamera();
+  }
 </script>
 
 <div>The Room</div>
@@ -72,6 +84,12 @@
 
 <button on:click={toggleVideo}>Toggle Video</button>
 <button on:click={toggleAudio}>Toggle Audio</button>
+{#if screenSharingOn}
+  <button on:click={changeToCamera}>Change To Camera</button>
+{/if}
+{#if !screenSharingOn}
+  <button on:click={changeToScreenShare}>Change To screen share</button>
+{/if}
 
 <div class="video-grid">
   <button on:click={handleJoin}>Send Join</button>

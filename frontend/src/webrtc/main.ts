@@ -16,7 +16,7 @@ export class WebConnection {
     inbound: RTCPeerConnection;
     channelName = "text";
     sendMessageQueue: Array<(data: string) => void> = [];
-
+    constraints: MediaStreamConstraints = {};
     // messages = new Array<string>();
 
 
@@ -50,6 +50,7 @@ export class WebConnection {
     }
 
     async handleOutboundInit(constraints: MediaStreamConstraints): Promise<MediaStream> {
+        this.constraints = constraints;
         return new Promise(async (resolve, reject) => {
 
             let stream = await getUserMedia(constraints)
@@ -184,4 +185,32 @@ export class WebConnection {
         this.sendMessageQueue.push(send);
     }
 
+
+    changeVideoConstraints(constraints: MediaTrackConstraints) {
+        let videoTrack = this.outboundStream.getVideoTracks()[0];
+        videoTrack.applyConstraints(constraints);
+    }
+
+    async chageToScreenShare() {
+        let videoTrack = this.outboundStream.getVideoTracks()[0];
+        let stream = await navigator.mediaDevices.getDisplayMedia();
+        let screenTrack = stream.getVideoTracks()[0];
+        let sender = this.outbound.getSenders().find(s => s.track.kind === "video");
+        sender.replaceTrack(screenTrack);
+        videoTrack.stop();
+        this.outboundStream.removeTrack(videoTrack);
+        this.outboundStream.addTrack(screenTrack);
+    }
+
+    async changeToCamera() {
+        let videoTrack = this.outboundStream.getVideoTracks()[0];
+        let stream = await navigator.mediaDevices.getUserMedia(this.constraints);
+        let streamTrack = stream.getVideoTracks()[0];
+        let sender = this.outbound.getSenders().find(s => s.track.kind === "video");
+        sender.replaceTrack(streamTrack);
+        videoTrack.stop();
+        this.outboundStream.removeTrack(videoTrack);
+        this.outboundStream.addTrack(streamTrack);
+
+    }
 }
