@@ -41,11 +41,7 @@ func init() {
 }
 
 func (c *connection) handleDatachannel(d *webrtc.DataChannel) {
-
 	// add the datachannel to the list of datachannels
-
-	c.datachannels = append(c.datachannels, d)
-
 	fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
 
 	d.OnOpen(func() {

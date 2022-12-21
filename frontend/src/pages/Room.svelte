@@ -55,13 +55,23 @@
   function recieveMessage(f: (data: string) => void) {
     blueNode.recieveMessage(f);
   }
+
+  function toggleVideo() {
+    blueNode.toggleVideo();
+  }
+
+  function toggleAudio() {
+    blueNode.toggleAudio();
+  }
 </script>
 
 <div>The Room</div>
-
 {#if blueNode}
   <MessageComp {sendMessage} {recieveMessage} />
 {/if}
+
+<button on:click={toggleVideo}>Toggle Video</button>
+<button on:click={toggleAudio}>Toggle Audio</button>
 
 <div class="video-grid">
   <button on:click={handleJoin}>Send Join</button>

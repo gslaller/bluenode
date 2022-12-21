@@ -39,6 +39,16 @@ export class WebConnection {
         }
     }
 
+    toggleVideo() {
+        let videoTrack = this.outboundStream.getVideoTracks()[0];
+        videoTrack.enabled = !videoTrack.enabled;
+    }
+
+    toggleAudio() {
+        let audioTrack = this.outboundStream.getAudioTracks()[0];
+        audioTrack.enabled = !audioTrack.enabled;
+    }
+
     async handleOutboundInit(constraints: MediaStreamConstraints): Promise<MediaStream> {
         return new Promise(async (resolve, reject) => {
 
@@ -175,4 +185,3 @@ export class WebConnection {
     }
 
 }
-
