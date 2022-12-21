@@ -44,6 +44,8 @@ func (c *connection) handleDatachannel(d *webrtc.DataChannel) {
 	// add the datachannel to the list of datachannels
 	fmt.Printf("New DataChannel %s %d\n", d.Label(), d.ID())
 
+	c.datachannels = append(c.datachannels, d)
+
 	d.OnOpen(func() {
 		fmt.Printf("datachannel opened '%s' '%d'\n", d.Label(), d.ID())
 	})
@@ -55,6 +57,7 @@ func (c *connection) handleDatachannel(d *webrtc.DataChannel) {
 		for _, datachannel := range c.datachannels {
 			if datachannel.ID() != d.ID() {
 
+				// fmt.Println("Sending message to datachannel: ", datachannel.Label(), datachannel.ID())
 				sendErr := datachannel.SendText(string(msg.Data))
 				if sendErr != nil {
 					panic(sendErr)
@@ -77,7 +80,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 	if c.localTrack != nil {
 		return nil, errors.New("localTrack already exists")
 	}
-	fmt.Println("HandleInboundRequest")
+	// fmt.Println("HandleInboundRequest")
 
 	offer := webrtc.SessionDescription{}
 	offer.SDP = sdp.SDP
