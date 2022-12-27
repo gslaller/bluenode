@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import { v4 } from 'uuid';
 
-export const user = writable({
+export const user = writable<{ uuid: string, name: string }>({
     uuid: v4(),
     name: ""
 });

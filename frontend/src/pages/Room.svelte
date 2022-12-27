@@ -9,6 +9,8 @@
   import { useParams } from "svelte-navigator";
   import AudioVisualizer from "../components/AudioVisualizer.svelte";
   import MessageComp from "../components/MessageComp.svelte";
+  import Dialer from "./Room/Dialer.svelte";
+  import { Link } from "svelte-navigator";
 
   // navigateToSettings();
 
@@ -85,38 +87,66 @@
   }
 </script>
 
-<div>The Room</div>
-{#if blueNode}
-  <MessageComp {sendMessage} {recieveMessage} />
-{/if}
-
-<button on:click={toggleVideo}>Toggle Video</button>
-<button on:click={toggleAudio}>Toggle Audio</button>
-{#if screenSharingOn}
-  <button on:click={changeToCamera}>Change To Camera</button>
-{/if}
-{#if !screenSharingOn}
-  <button on:click={changeToScreenShare}>Change To screen share</button>
-{/if}
-
-<div class="video-grid">
-  <button on:click={handleJoin}>Send Join</button>
-  <button on:click={handleReceive}>Receive Join</button>
-
-  {#if selfStream && newTrack}
-    <Video stream={selfStream} />
-  {/if}
-
-  {#if inboundStream}
-    <Video stream={inboundStream} />
-  {/if}
-</div>
+<main>
+  <topbar>
+    <a href="/#">
+      <Link to="/">Home</Link>
+    </a>
+    <span>Name:</span>
+    <span>Admin:</span>
+    <button>&#60;&#60; Message &#60;&#60;</button>
+  </topbar>
+  <maincontent> Main Content</maincontent>
+  <bottombar>
+    <button>Back (0 / 15)</button>
+    <button>Mic</button>
+    <button>Video</button>
+    <button>Raise Hand</button>
+    <Dialer text="col" />
+    <Dialer text="row" />
+    <button>Next (4 / 15)</button>
+  </bottombar>
+  <sidebar />
+</main>
 
 <style>
-  .video-grid {
+  main {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-    grid-gap: 10px;
+    grid-template-columns: 1fr 20rem;
+    grid-template-rows: 2rem 1fr 2rem;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+  }
+
+  topbar {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid black;
+  }
+
+  maincontent {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    align-self: stretch;
+  }
+
+  bottombar {
+    grid-column: 1 / 2;
+    grid-row: 3 / 4;
+    align-self: stretch;
+    border-top: 1px solid black;
+    display: flex;
+    gap: 1rem;
+  }
+
+  sidebar {
+    grid-column: 2 / 3;
+    grid-row: 1 / 4;
+    align-self: stretch;
+    border-left: 1px solid black;
   }
 </style>

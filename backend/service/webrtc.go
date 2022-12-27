@@ -145,7 +145,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 		// fmt.Printf("RemoteTrack has started, +%#v", remoteTrack)
 		// fmt.Printf("Receiver has started, +%#v", receiver)
 
-		// Send a PLI on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
+		// Send a PLI(picture loss indication) on an interval so that the publisher is pushing a keyframe every rtcpPLIInterval
 		// This can be less wasteful by processing incoming RTCP events, then we would emit a NACK/PLI when a viewer requests it
 
 		go func() {
@@ -215,6 +215,7 @@ func (c *connection) HandleInboundRequest(sdp *ExtendedSessionDescription) (*web
 
 }
 
+// Negative Acknowledgement (NACK) is a feedback message sent from a receiver to a sender to request retransmission of one or more lost RTP data packets.
 func ReadRTCPForNACK(rtpSender *webrtc.RTPSender) {
 	go func() {
 		rtcpBuf := make([]byte, 1500)
